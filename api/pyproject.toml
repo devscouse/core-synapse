@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "core-synapse-api"
+version = "0.1.0"
+description = "REST API endpoint for the Core Synapse model inference."
+authors = ["devscouse <rob-jwebster@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.115.8"
+requests = "^2.32.3"
+uvicorn = "^0.34.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
