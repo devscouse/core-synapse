@@ -34,17 +34,6 @@ if $LOAD_MINIKUBE; then
     minikube image load "$DOCKER_REPO:$tag_name"
 fi
 
-echo "Building UI docker image..."
-ui_version=$(cat ui/VERSION)
-tag_name=core-synapse-ui-$ui_version
-docker build -t $tag_name -f ui/Dockerfile .
-docker tag $tag_name $DOCKER_REPO:$tag_name
-docker push $DOCKER_REPO:$tag_name
-
-if $LOAD_MINIKUBE; then
-    minikube image load "$DOCKER_REPO:$tag_name"
-fi
-
 for model_dir in models/*/ ; do
     model_name=$(basename "$model_dir")
     model_version=$(cat "$model_dir/VERSION")
@@ -54,6 +43,7 @@ for model_dir in models/*/ ; do
     docker build -t $tag_name -f "$model_dir/Dockerfile" "$model_dir"
     docker tag $tag_name $DOCKER_REPO:$tag_name
     docker push $DOCKER_REPO:$tag_name
+    echo "$tag_name pushed to $DOCKER_REPO"
 
     if $LOAD_MINIKUBE; then
         minikube image load "$DOCKER_REPO:$tag_name"

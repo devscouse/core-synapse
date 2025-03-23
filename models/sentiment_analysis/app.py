@@ -21,7 +21,10 @@ class SentimentAnalysisResponse(BaseModel):
     )
 
 
-@app.post("/infer")
+@app.post(
+    "/infer",
+    description="Analyse the sentiment (positivity or negativity) of a given piece of text",
+)
 def infer(body: SentimentAnalysisRequest) -> SentimentAnalysisResponse:
     del body
     return SentimentAnalysisResponse(polarity=1)
