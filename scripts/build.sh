@@ -36,6 +36,10 @@ fi
 
 for model_dir in models/*/ ; do
     model_name=$(basename "$model_dir")
+    if [ $model_name = "common" ]; then
+       continue
+    fi
+
     model_version=$(cat "$model_dir/VERSION")
     tag_name=core-synapse-$model_name-$model_version
     echo "Building $model_name Docker image..."
