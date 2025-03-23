@@ -1,10 +1,5 @@
-import logging
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from ..common.log import logging_config
-
-logging_config()
-logger = logging.getLogger(__name__)
 
 app = FastAPI()
 

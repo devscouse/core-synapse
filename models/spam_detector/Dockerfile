@@ -6,7 +6,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py spam_detector/app.py 
-COPY common/ common/
 
 EXPOSE 5000
 CMD ["uvicorn", "spam_detector.app:app", "--host", "0.0.0.0", "--port", "5000"]
