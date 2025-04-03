@@ -1,19 +1,21 @@
+import requests
+import httpx
 import os
 from enum import StrEnum
 import logging
-from typing import Dict
-import requests
-from fastapi import FastAPI, HTTPException
+from typing import Annotated, Dict
+from fastapi import FastAPI, HTTPException, Header, Request
+from starlette.background import BackgroundTask
+from starlette.datastructures import ImmutableMultiDict
+from starlette.responses import StreamingResponse
 from src.log import logging_config
-from src.schema import ModelSpec, OpenApiJson
+from src.schema import ModelSpec
 from src.config import cfg, Env
 
 logging_config()
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-
-SUPPORTED_MODELS = ["sentiment-analysis"]
 
 
 class CoreSynapseModels(StrEnum):
@@ -27,25 +29,41 @@ class CoreSynapseModels(StrEnum):
         return f"http://core-synapse-{self}:5000/"
 
     @property
-    def infer_url(self) -> str:
-        return self.base_url + "infer"
-
-    @property
-    def health_url(self) -> str:
-        return self.base_url + "health"
-
-    @property
     def openapi_url(self) -> str:
         return self.base_url + "openapi.json"
 
+    async def openapi(self) -> httpx.Response:
+        async with httpx.AsyncClient(base_url=self.base_url) as client:
+            res = await client.get(self.openapi_url)
+        return res
 
-@app.post("/calculate/{model_key}")
-def calculate(input_data: dict, model_key: CoreSynapseModels):
-    if model_key not in SUPPORTED_MODELS:
-        raise HTTPException(
-            status_code=400, detail=f"{model_key} is not a supported core-synapse model"
-        )
-    res = requests.post(model_key.infer_url, json=input_data)
+    async def proxy_request(
+        self, path_name: str, request: Request
+    ) -> httpx.Response:
+        url = httpx.URL(path=path_name, query=request.url.query.encode("utf-8"))
+        async with httpx.AsyncClient(base_url=self.base_url, timeout=60) as client:
+            req = client.build_request(
+                request.method,
+                url,
+                headers=request.headers.raw,
+                content=request.stream(),
+            )
+            logger.debug(f"Sending request to {self} API: {req}")
+            res = await client.send(req)
+        return res
+
+
+@app.api_route(
+    "/service/{path_name:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+)
+async def service_proxy(
+    request: Request, path_name: str, model_key: Annotated[str, Header()]
+):
+    mdl = CoreSynapseModels(model_key)
+    res = await mdl.proxy_request(path_name, request)
+    if res.status_code != 200:
+        raise HTTPException(status_code=res.status_code, detail=res.json()["detail"])
     return res.json()
 
 
@@ -53,25 +71,22 @@ def calculate(input_data: dict, model_key: CoreSynapseModels):
     "/modelspecs",
     description="Get the specifications for all models currently hosted on the Core Synapse platform.",
 )
-def get_models_openapi() -> Dict[str, ModelSpec]:
+def get_model_specs() -> Dict[str, ModelSpec]:
     specs = {}
     for model in CoreSynapseModels.__members__.values():
         try:
             res = requests.get(model.openapi_url)
-        except requests.exceptions.RequestException:
+        except httpx.RequestError:
             logger.warning(f"Unable to retrieve openapi.json for {model}")
             continue
 
         if res.status_code != 200:
             logger.warning(f"Unable to retrieve openapi.json for {model}")
             continue
-        
-        data = res.json()
-        logger.debug(f"OpenAPI for {model}: {data}")
 
-        spec = OpenApiJson.model_validate(data)
-        specs[model] = ModelSpec.from_openapi(model, spec)
+        specs[str(model)] = ModelSpec.from_openapi(model, res.json())
 
+    logger.debug(specs)
     return specs
 
 

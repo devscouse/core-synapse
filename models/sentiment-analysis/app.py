@@ -30,6 +30,6 @@ def infer(body: SentimentAnalysisRequest) -> SentimentAnalysisResponse:
     return SentimentAnalysisResponse(polarity=1)
 
 
-@app.get("/health")
+@app.get("/health", description="Check the health of the sentiment-analysis model API")
 def health():
     return {"status": "The service is alive and healthy"}

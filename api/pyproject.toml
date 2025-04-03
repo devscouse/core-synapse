@@ -12,7 +12,11 @@ fastapi = "^0.115.8"
 requests = "^2.32.3"
 uvicorn = "^0.34.0"
 pydantic-settings = "^2.8.0"
+colorlog = "^6.9.0"
+httpx = "^0.28.1"
 
+[tool.poetry.requires-plugins]
+poetry-plugin-export = ">=1.8"
 
 [build-system]
 requires = ["poetry-core"]
